@@ -1,0 +1,423 @@
+Task1 : Movie Genre Classification
+We are tasked to design an Movie Genre classifier based on previous movie data in this jupyter notebook we are going to 
+create a machine learning model that can predict the genre of a movie based on its plot summary or other textual 
+information. we are going to use techniques like TF-IDF or word embeddings with classifiers such as Naive Bayes, 
+Logistic Regression, or Support Vector Machines.
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import re
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
+from wordcloud import WordCloud
+
+import nltk
+import os
+
+# Set the custom download path for NLTK data
+custom_download_path = '/kaggle/working/nltk_data'
+
+# Make sure the directory exists; if not, create it
+os.makedirs(custom_download_path, exist_ok=True)
+
+# Append the custom download path to NLTK data path
+nltk.data.path.append(custom_download_path)
+
+# Download NLTK resources to the custom path
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
+
+import warnings
+
+# Ignore all warnings
+warnings.filterwarnings("ignore")
+
+1. Data Collection
+For the purpose of designing a Movie Genre classifier, we collected the dataset from Kaggle. The dataset consists of movie-related information sourced from the Internet Movie Database (IMDb). IMDb is a widely recognized online database that provides comprehensive details about movies, TV shows, cast and crew, ratings, reviews, and more.
+
+The dataset contains a diverse range of textual information, including plot summaries and other relevant details about various movies. This textual data will serve as the basis for training our machine learning model to predict the genre of a movie.
+add Codeadd Markdown
+# Read the txt files using pandas 
+​
+train_data = pd.read_csv("/content/drive/MyDrive/Genre Classification Dataset/train_data.txt", delimiter=':::' ,header = None ,engine='python')
+test_data  = pd.read_csv("/content/drive/MyDrive/Genre Classification Dataset/test_data.txt", delimiter=':::' ,header = None ,engine='python')
+​
+test_data_solution  = pd.read_csv("/content/drive/MyDrive/Genre Classification Dataset/test_data_solution.txt", delimiter=':::' ,header = None ,engine='python')
+add Codeadd Markdown
+​
+add Codeadd Markdown
+## View train data 
+print("shape",train_data.shape)
+train_data.head()
+​
+add Codeadd Markdown
+## View the test solution data 
+print("shape",test_data_solution.shape)
+test_data_solution.head()
+add Codeadd Markdown
+## We will concat the test and train file
+​
+df = pd.concat((train_data ,test_data_solution))
+df.columns = ["id" ,"Title","Genre","Description"]
+df.head()
+add Codeadd Markdown
+## Check the size 
+df.shape
+add Codeadd Markdown
+2. Data Cleaning and Preprocessing
+We will clean and preprocess the data 
+- Removing duplicates
+- Removing Nan rows and column
+- Preprocessing the Data
+add Codeadd Markdown
+## Check for Duplicates and Remove them
+df.duplicated().sum() ## Will give us a number of duplicates
+​
+df.drop_duplicates(inplace = True)  ## Will drops any duplicates
+add Codeadd Markdown
+## Check for nan values
+​
+df.isna().sum()  # Will check for any duplicates
+​
+df.dropna( inplace = True ) ## Will drop any nan containing row if exists 
+add Codeadd Markdown
+## Check the size 
+df.shape
+add Codeadd Markdown
+​
+add Codeadd Markdown
+## function to preprocess the data
+stopword = set(stopwords.words('english'))
+​
+def preprocessing(text):
+    # Convert text to lowercase
+    text = text.lower()
+    
+    # Remove punctuation using regular expressions
+    text = re.sub(r'[^\w\s]', '', text)
+    
+    # Remove specific characters #, @, and $
+    text = re.sub(r'[#@\$]', '', text)
+    
+    # tokenize and convert to list
+    tokens = word_tokenize(text)
+    
+    ## Lemmatize it 
+    lemmatizer  = WordNetLemmatizer()
+    
+    ## lemmatize each token
+   # text = [lemmatizer.lemmatize(token) for token in tokens]
+    text = text.split()
+    
+    text = [word for word in text if word not in stopword]
+    
+    
+    return " ".join(text) 
+   
+## Create list of words in discription column
+df["Despcription_clean"] =  df["Description"].apply(preprocessing)
+add Codeadd Markdown
+df.head()
+add Codeadd Markdown
+3. Data Visualization
+Will try to analyse the data using Histogram and Bar Chart.
+And will show word cloud for each genre.
+add Codeadd Markdown
+## Shows us the label counts
+df["Genre"].value_counts()
+add Codeadd Markdown
+# Create a histogram of genre distribution
+plt.figure(figsize=(20, 10))
+plt.hist(df["Genre"],bins =27 , color='blue', alpha=0.7)
+plt.title("Genre Distribution")
+plt.xlabel("Genres")
+plt.ylabel("Frequency")
+plt.xticks(rotation=90)
+plt.show()
+add Codeadd Markdown
+## View genre distribution on Horizontal graph
+​
+genre_counts = df["Genre"].value_counts()
+sorted_genres = genre_counts.sort_values(ascending=True)
+# Create a horizontal histogram of genre distribution
+plt.figure(figsize=(10, 15))
+sorted_genres.plot(kind='barh',color = "blue", alpha=1 )
+plt.title("Genre Distribution")
+plt.xlabel("Frequency")
+plt.ylabel("Genres")
+plt.show()
+add Codeadd Markdown
+## Below code will generate wordcloud of each genre
+​
+# Create a list of unique genres from the dataset
+genres = df['Genre'].unique()
+​
+# Set the figure size outside the loop
+plt.figure(figsize=(20, 60))
+​
+# Iterate over each genre
+for i, genre in enumerate(genres, 1):
+    plt.subplot(14, 2, i)  # Assuming you have 14 rows and 2 columns for 28 genres
+    text_subset = " ".join(list(df[df["Genre"] == genre]['Description']))
+    wordcloud = WordCloud(max_words=300, width=300, height=100, background_color='white').generate(text_subset)
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.title(f'Word Cloud for {genre} Genre',fontsize=30)
+    plt.axis('off')
+​
+    
+plt.tight_layout()
+plt.show()
+​
+add Codeadd Markdown
+4. Feature Engineering
+  In this step we will remove unnecessary column which are not necessary for our model
+
+## remove id column from head 
+data = df.drop(["Title","id"] , axis = 1) # will drop column 
+data.head()
+​
+
+5. Model Selection & Training
+In this section we will try to apply CountVectorizer and TF-IDF technique and try to predict accuracy on model.
+add Codeadd Markdown
+Importing necessary libraries for model selection and training
+add Codeadd Markdown
+## import necessary library for
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import LinearSVC
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.ensemble import RandomForestClassifier 
+​
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer
+​
+from sklearn.model_selection import train_test_split
+​
+from sklearn.metrics import classification_report,confusion_matrix,ConfusionMatrixDisplay
+​
+add Codeadd Markdown
+Converting Genre into Numerical form
+add Codeadd Markdown
+#Convert sentiment labels to numerical values for modeling
+from sklearn.preprocessing import LabelEncoder
+label_encoder = LabelEncoder()
+data['Genre_encoded'] = label_encoder.fit_transform(data['Genre'])
+data['Genre_encoded']
+​
+class_names= list(label_encoder.classes_)
+class_names   
+add Codeadd Markdown
+data.head()
+add Codeadd Markdown
+Split the data to test and train
+add Codeadd Markdown
+## Split the data
+x = data["Despcription_clean"]
+y = data["Genre"]
+​
+x_train ,x_test ,y_train ,y_test = train_test_split(x ,y ,test_size = 0.5)
+
+Model training using CountVectorizer technique
+
+vectorize = CountVectorizer()
+x_train1 = vectorize.fit_transform(x_train)
+x_test1 =  vectorize.transform(x_test)
+add Codeadd Markdown
+MultinomialNB
+add Codeadd Markdown
+mnb = MultinomialNB()
+mnb.fit(x_train1 ,y_train)
+print("Model Score on Training data",mnb.score(x_train1 ,y_train))
+print("Model Score on Training data",mnb.score(x_test1 ,y_test))
+y_pred = mnb.predict(x_test1)
+​
+print(classification_report(y_pred ,y_test))
+ 
+cm = confusion_matrix(y_test, y_pred)
+​
+plt.figure(figsize=(15, 15))  # Adjust the figure size as needed
+sns.heatmap(cm, annot=True, fmt='d', cbar=False, 
+            xticklabels=class_names, yticklabels=class_names)  # Replace 'class_names' with your class labels
+plt.xlabel('Predicted Labels')
+plt.ylabel('True Labels')
+plt.title('Confusion Matrix Heatmap')
+plt.show()    
+    
+
+LogisticRegression
+
+## select Logistic regression for this
+model = LogisticRegression()
+model.fit(x_train1 ,y_train)
+print("Model Score on Training data",model.score(x_train1 ,y_train))
+print("Model Score on Training data",model.score(x_test1 ,y_test))
+y_pred = model.predict(x_test1)
+print(classification_report(y_pred ,y_test))
+​
+​
+cm = confusion_matrix(y_test, y_pred)
+​
+plt.figure(figsize=(15, 15))  # Adjust the figure size as needed
+sns.heatmap(cm, annot=True, fmt='d', cbar=False, 
+            xticklabels=class_names, yticklabels=class_names)  # Replace 'class_names' with your class labels
+plt.xlabel('Predicted Labels')
+plt.ylabel('True Labels')
+plt.title('Confusion Matrix Heatmap')
+plt.show()
+add Codeadd Markdown
+Support Vector Machine ( SVC )
+add Codeadd Markdown
+## Select SVC model
+​
+svm = LinearSVC()
+svm.fit(x_train1 ,y_train)
+print("Model Score on Training data",svm.score(x_train1 ,y_train))
+print("Model Score on Training data",svm.score(x_test1 ,y_test))
+y_pred = svm.predict(x_test1)
+print(classification_report(y_pred ,y_test))
+## As we can see from accuracy that the model the not performing well
+​
+​
+​
+cm = confusion_matrix(y_test, y_pred)
+​
+plt.figure(figsize=(15, 15))  # Adjust the figure size as needed
+sns.heatmap(cm, annot=True, fmt='d', cbar=False, 
+            xticklabels=class_names, yticklabels=class_names)  # Replace 'class_names' with your class labels
+plt.xlabel('Predicted Labels')
+plt.ylabel('True Labels')
+plt.title('Confusion Matrix Heatmap')
+plt.show()
+add Codeadd Markdown
+RandomForestClassifier
+add Codeadd Markdown
+# Create a Random Forest model
+random_forest = RandomForestClassifier()
+​
+# Fit the model with GridSearchCV
+random_forest.fit(x_train1, y_train)
+print("Random Forest - Train Score:",random_forest.score(x_train1, y_train))
+print("Random Forest - Test Score:", random_forest.score(x_test1, y_test))
+​
+y_pred = random_forest.predict(x_test1)
+print(classification_report(y_pred ,y_test))
+​
+​
+​
+cm = confusion_matrix(y_test, y_pred)
+​
+plt.figure(figsize=(15, 15))  # Adjust the figure size as needed
+sns.heatmap(cm, annot=True, fmt='d', cbar=False, 
+            xticklabels=class_names, yticklabels=class_names)  # Replace 'class_names' with your class labels
+plt.xlabel('Predicted Labels')
+plt.ylabel('True Labels')
+plt.title('Confusion Matrix Heatmap')
+plt.show()
+add Codeadd Markdown
+​
+add Codeadd Markdown
+Now use TfidfVectorizer technique
+add Codeadd Markdown
+## Using TfidfVectorizer technique
+vectorizer = TfidfVectorizer()
+x_train2 = vectorize.fit_transform(x_train)
+x_test2 =  vectorize.transform(x_test)
+add Codeadd Markdown
+MultinomialNB with TfidfVectorizer
+add Codeadd Markdown
+mnb = MultinomialNB()
+mnb.fit(x_train2 ,y_train)
+print("Model Score on Training data",mnb.score(x_train2 ,y_train))
+print("Model Score on Training data",mnb.score(x_test2 ,y_test))
+y_pred = mnb.predict(x_test2)
+print(classification_report(y_pred ,y_test))
+​
+​
+cm = confusion_matrix(y_test, y_pred)
+​
+plt.figure(figsize=(15, 15))  # Adjust the figure size as needed
+sns.heatmap(cm, annot=True, fmt='d', cbar=False, 
+            xticklabels=class_names, yticklabels=class_names)  # Replace 'class_names' with your class labels
+plt.xlabel('Predicted Labels')
+plt.ylabel('True Labels')
+plt.title('Confusion Matrix Heatmap')
+plt.show()
+add Codeadd Markdown
+LogisticRegression with TfidfVectorizer
+add Codeadd Markdown
+## select Logistic regression for this
+model = LogisticRegression()
+model.fit(x_train2 ,y_train)
+print("Model Score on Training data",model.score(x_train2 ,y_train))
+print("Model Score on Training data",model.score(x_test2 ,y_test))
+y_pred = model.predict(x_test2)
+print(classification_report(y_pred ,y_test))
+​
+​
+cm = confusion_matrix(y_test, y_pred)
+​
+plt.figure(figsize=(15, 15))  # Adjust the figure size as needed
+sns.heatmap(cm, annot=True, fmt='d', cbar=False, 
+            xticklabels=class_names, yticklabels=class_names)  # Replace 'class_names' with your class labels
+plt.xlabel('Predicted Labels')
+plt.ylabel('True Labels')
+plt.title('Confusion Matrix Heatmap')
+plt.show()
+add Codeadd Markdown
+Support Vector Machine ( SVC ) with TfidfVectorizer
+add Codeadd Markdown
+## Select SVC model
+​
+svm = LinearSVC()
+svm.fit(x_train2 ,y_train)
+print("Model Score on Training data",svm.score(x_train2 ,y_train))
+print("Model Score on Training data",svm.score(x_test2 ,y_test))
+y_pred = svm.predict(x_test2)
+print(classification_report(y_pred ,y_test))
+## As we can see from accuracy that the model the not performing well
+​
+​
+​
+cm = confusion_matrix(y_test, y_pred)
+​
+plt.figure(figsize=(15, 15))  # Adjust the figure size as needed
+sns.heatmap(cm, annot=True, fmt='d', cbar=False, 
+            xticklabels=class_names, yticklabels=class_names)  # Replace 'class_names' with your class labels
+plt.xlabel('Predicted Labels')
+plt.ylabel('True Labels')
+plt.title('Confusion Matrix Heatmap')
+plt.show()
+add Codeadd Markdown
+RandomForestClassifier with TfidfVectorizer
+add Codeadd Markdown
+# Create a Random Forest model
+random_forest = RandomForestClassifier()
+​
+​
+# Fit the model with GridSearchCV
+random_forest.fit(x_train2, y_train)
+​
+​
+print("Random Forest - Train Score:",random_forest.score(x_train2, y_train))
+print("Random Forest - Test Score:", random_forest.score(x_test2, y_test))
+​
+y_pred = random_forest.predict(x_test2)
+print(classification_report(y_pred ,y_test))
+​
+​
+​
+cm = confusion_matrix(y_test, y_pred)
+​
+plt.figure(figsize=(15, 15))  # Adjust the figure size as needed
+sns.heatmap(cm, annot=True, fmt='d', cbar=False, 
+            xticklabels=class_names, yticklabels=class_names)  # Replace 'class_names' with your class labels
+plt.xlabel('Predicted Labels')
+plt.ylabel('True Labels')
+plt.title('Confusion Matrix Heatmap')
+plt.show()
+
+ 
